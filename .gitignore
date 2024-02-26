@@ -160,10 +160,12 @@ cython_debug/
 #.idea/
 notebook/lightning_logs/
 notebook/log/
+notebook/MNIST/
 lightning_logs/
 
 
 data/.DS_Store
+data/
 
 *.JPEG
 *.jpg
@@ -173,3 +175,5 @@ data/.DS_Store
 
 *.out
 *.err
+
+*.pt

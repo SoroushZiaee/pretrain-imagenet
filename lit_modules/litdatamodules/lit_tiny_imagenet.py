@@ -7,8 +7,9 @@ import torch
 
 
 class TinyImageNetDataModule(L.LightningDataModule):
-    def __init__(self, data_path) -> None:
+    def __init__(self, data_path, batch_size=32) -> None:
         super().__init__()
+        self.save_hyperparameters("batch_size")
         self.data_path = data_path
 
     def setup(self, stage: str):
@@ -32,11 +33,17 @@ class TinyImageNetDataModule(L.LightningDataModule):
         )
 
     def train_dataloader(self):
-        return torch.utils.data.DataLoader(
-            self.train_dataset, batch_size=64, num_workers=0, shuffle=False
+        return DataLoader(
+            self.train_dataset,
+            batch_size=self.hparams.batch_size,
+            num_workers=20,
+            shuffle=False,
         )
 
     def val_dataloader(self):
-        return torch.utils.data.DataLoader(
-            self.test_dataset, batch_size=64, num_workers=0, shuffle=False
+        return DataLoader(
+            self.test_dataset,
+            batch_size=self.hparams.batch_size,
+            num_workers=20,
+            shuffle=False,
         )
