@@ -4,6 +4,8 @@ from torchvision.models import resnet50
 import lightning as L
 import torch.optim as optim
 
+from .lit_memnet import LitMemNet
+
 
 class ResNet50Regression(nn.Module):
     def __init__(self, num_output_features=1):
@@ -55,7 +57,9 @@ class LitResNet50(L.LightningModule):
     def test_step(self, batch, batch_idx):
         x, y = batch
         output = self.model(x)
-        loss = self.criterion(output.squeeze(), y)
+        memnet_output = self.test_memnet(x)
+
+        loss = self.criterion(output.squeeze(), memnet_output.squeeze())
         self.log("test_loss", loss, prog_bar=True, on_step=True)
 
     def configure_optimizers(self):

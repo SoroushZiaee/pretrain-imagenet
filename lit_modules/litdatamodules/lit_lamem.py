@@ -110,7 +110,7 @@ class LitLaMemDataModule(L.LightningDataModule):
             batch_size=self.hparams.batch_size,
             num_workers=self.num_workers,
             shuffle=False,
-            persistent_workers=True,
+            persistent_workers=False,
             pin_memory=False,
             prefetch_factor=2,
         )

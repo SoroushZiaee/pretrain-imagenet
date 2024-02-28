@@ -9,9 +9,8 @@
 # Replace the values according to your requirements
 
 salloc -N 1 \
-       -n 10 \
+       -n 5 \
        -c 1 \
-       --mem=32GB \
-       -t 02:00:00 \
+       --mem=5GB \
+       -t 01:00:00 \
        --gres=gpu:a100:1 \
-       --exclusive
