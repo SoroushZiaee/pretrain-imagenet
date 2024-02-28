@@ -23,7 +23,7 @@ class LaMem(Dataset):
             axis=0,
         )
         self.transforms = transforms
-        self.images_path = os.path.join(root)
+        self.images_path = os.path.join(root, "images")
 
     def __len__(self):
         return len(self.mem_frame)
@@ -32,15 +32,13 @@ class LaMem(Dataset):
         if torch.is_tensor(idx):
             idx = idx.tolist()
 
-        img_name = os.path.join(
-            self.images_path, self.mem_frame["preprocessed_path"][idx]
-        )
-        image = torch.load(img_name)
-        # image = PIL.Image.open(img_name).convert("RGB")
+        img_name = os.path.join(self.images_path, self.mem_frame["image_name"][idx])
+        # image = torch.load(img_name)
+        image = PIL.Image.open(img_name).convert("RGB")
         mem_score = self.mem_frame["memo_score"][idx]
         target = float(mem_score)
         target = torch.tensor(target)
-        # if self.transforms:
-        #     image = self.transforms(image)
+        if self.transforms:
+            image = self.transforms(image)
 
         return image, target

@@ -15,6 +15,7 @@ class LitLaMemDataModule(L.LightningDataModule):
         root: str,
         num_workers: int = 10,
         batch_size: int = 32,
+        desired_image_size: int = 224,
         dev_mode: bool = False,
     ) -> None:
         super().__init__()
@@ -23,6 +24,7 @@ class LitLaMemDataModule(L.LightningDataModule):
         self.root = root
         self.num_workers = num_workers
         self.dev_mode = dev_mode
+        self.desired_image_size = desired_image_size
 
         splits_list = os.listdir(os.path.join(root, "splits"))
         self.train_splits = list(sorted(filter(lambda x: "train" in x, splits_list)))
@@ -61,8 +63,10 @@ class LitLaMemDataModule(L.LightningDataModule):
                     lambda x: np.subtract(
                         x[:, :, [2, 1, 0]], self.mean
                     ),  # Subtract average mean from image (opposite order channels)
-                    lambda x: x[15:242, 15:242],  # Center crop
                     transforms.ToTensor(),
+                    transforms.CenterCrop(
+                        self.desired_image_size
+                    ),  # Center crop to 224x224
                 ]
             )
 
@@ -97,7 +101,7 @@ class LitLaMemDataModule(L.LightningDataModule):
             shuffle=False,
             persistent_workers=True,
             pin_memory=False,
-            prefetch_factor=2,
+            prefetch_factor=4,
         )
 
     def test_dataloader(self):

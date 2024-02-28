@@ -23,17 +23,17 @@ def preprocess_and_save_images(root, output_dir, transform):
     image_path = os.path.join(root, "images")
     os.makedirs(output_dir, exist_ok=True)
 
-    # images = os.listdir(image_path)
-    # meta = Parallel(n_jobs=15)(
-    #     delayed(process_images)(image_path, image, transform, output_dir)
-    #     for image in tqdm(images, total=len(images))
-    # )
+    images = os.listdir(image_path)
+    meta = Parallel(n_jobs=15)(
+        delayed(process_images)(image_path, image, transform, output_dir)
+        for image in tqdm(images, total=len(images))
+    )
 
-    # meta = pd.DataFrame(meta, columns=["image_path", "target_path"])
-    # meta["image_idx"] = meta["image_path"].apply(lambda x: int(x.split(".")[0]))
-    # meta.sort_values("image_idx", inplace=True)
-    # meta.reset_index(drop=True, inplace=True)
-    # meta.to_csv(os.path.join(output_dir, "meta.csv"), index=False)
+    meta = pd.DataFrame(meta, columns=["image_path", "target_path"])
+    meta["image_idx"] = meta["image_path"].apply(lambda x: int(x.split(".")[0]))
+    meta.sort_values("image_idx", inplace=True)
+    meta.reset_index(drop=True, inplace=True)
+    meta.to_csv(os.path.join(output_dir, "meta.csv"), index=False)
 
     splits_path = os.path.join(root, "splits")
     split_output_path = os.path.join(output_dir, "splits")

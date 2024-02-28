@@ -2,26 +2,27 @@ from lightning import Trainer
 from lightning.pytorch.callbacks.early_stopping import EarlyStopping
 from lightning.pytorch.callbacks import DeviceStatsMonitor, StochasticWeightAveraging
 
-from lit_modules import LitVGG, LitLaMemDataModule
+from lit_modules import LitVGG, LitLaMemDataModule, LitResNet50
 from lightning.pytorch.loggers import TensorBoardLogger
 
 
 def main():
-    data_path = "/home/soroush1/projects/def-kohitij/soroush1/pretrain-imagenet/data/LaMem/preprocessed/dataset"
+    data_path = "/home/soroush1/projects/def-kohitij/soroush1/pretrain-imagenet/data/LaMem/lamem_images/lamem/"
 
     # TODO: Change the root to data_path
     lamem = LitLaMemDataModule(
-        root=data_path, batch_size=128, num_workers=5, dev_mode=False
+        root=data_path, batch_size=128, num_workers=20, dev_mode=False
     )
     # cifar = CifarDataModule()
-    model = LitVGG(learning_rate=1e-5)
+    model = LitVGG(learning_rate=1.44e-6)
+    # model = LitResNet50(learning_rate=1.9054607179632464e-05)
 
-    tb_logger = TensorBoardLogger("./memorability")
+    tb_logger = TensorBoardLogger("./vgg_lalem")
 
     trainer = Trainer(
         max_epochs=500,
         # callbacks=[EarlyStopping(monitor="val_loss", mode="min", patience=10)],
-        callbacks=[StochasticWeightAveraging(swa_lrs=1e-2), DeviceStatsMonitor()],
+        callbacks=[DeviceStatsMonitor()],
         fast_dev_run=False,
         devices="auto",
         accelerator="gpu",

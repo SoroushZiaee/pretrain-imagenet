@@ -11,7 +11,7 @@
 salloc -N 1 \
        -n 10 \
        -c 1 \
-       --mem=16GB \
-       -t 00:15:00 \
-       --gres=gpu:a100:4 \
+       --mem=32GB \
+       -t 02:00:00 \
+       --gres=gpu:a100:1 \
        --exclusive
