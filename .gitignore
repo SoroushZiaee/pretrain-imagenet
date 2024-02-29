@@ -177,3 +177,5 @@ data/
 *.err
 
 *.pt
+*.ckpt
+*.csv
