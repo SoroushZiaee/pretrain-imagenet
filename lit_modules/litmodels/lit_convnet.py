@@ -1,33 +1,47 @@
 import torch
 import torch.nn as nn
-from torchvision.models import resnet50
+from torchvision.models import convnext_base
 import lightning as L
 import torch.optim as optim
 
-from .lit_memnet import LitMemNet
 
-
-class ResNet50Regression(nn.Module):
+class ConvNetRegression(nn.Module):
     def __init__(self, num_output_features=1):
         super().__init__()
         # Load a pre-trained ResNet-50 model
-        self.resnet = resnet50(weights=None)
+        self.convnet = convnext_base(weights=None, init_weights=True)
+
         # Replace the classifier layer for regression
-        num_ftrs = self.resnet.fc.in_features
-        self.resnet.fc = nn.Linear(num_ftrs, num_output_features)
+
+        # Replace the classifier layer for regression
+        self.convnet.classifier = nn.Sequential(
+            nn.Flatten(
+                start_dim=1
+            ),  # Flatten [batch_size, channels, 1, 1] to [batch_size, channels]
+            nn.LayerNorm(normalized_shape=[1024], elementwise_affine=True),
+            nn.Linear(in_features=1024, out_features=num_output_features, bias=True),
+        )
         # If your targets are in the range [0, 1], you might want to add a sigmoid layer:
+
         self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
-        x = self.resnet(x)
+        # Get the main output from the GoogLeNet model
+        outputs = self.convnet(x)
+        if isinstance(outputs, torch.Tensor):
+            x = outputs
+        else:  # If outputs are GoogLeNetOutputs, extract the main output
+            x = outputs.logits
+
+        # Apply the sigmoid function to the main output
         x = self.sigmoid(x)
         return x
 
 
-class LitResNet50(L.LightningModule):
+class LitConvNet(L.LightningModule):
     def __init__(self, learning_rate=1e-3, example_input_array=(64, 3, 224, 224)):
         super().__init__()
-        self.model = ResNet50Regression()
+        self.model = ConvNetRegression(num_output_features=1)
         self.learning_rate = learning_rate
         self.save_hyperparameters("learning_rate")
 
@@ -57,9 +71,8 @@ class LitResNet50(L.LightningModule):
     def test_step(self, batch, batch_idx):
         x, y = batch
         output = self.model(x)
-        memnet_output = self.test_memnet(x)
 
-        loss = self.criterion(output.squeeze(), memnet_output.squeeze())
+        loss = self.criterion(output.squeeze(), y)
         self.log("test_loss", loss, prog_bar=True, on_step=True)
 
     def configure_optimizers(self):
@@ -70,7 +83,7 @@ class LitResNet50(L.LightningModule):
 
         scheduler = torch.optim.lr_scheduler.StepLR(
             optimizer,
-            step_size=44,
+            step_size=200,
             gamma=0.1,
         )
         return {"optimizer": optimizer, "lr_scheduler": scheduler}

@@ -1,9 +1,9 @@
 #!/bin/bash
-#SBATCH --job-name=my_training_job
+#SBATCH --job-name=vgg
 #SBATCH --output=result.out
 #SBATCH --error=error.err
 #SBATCH --nodes=1
-#SBATCH --cpus-per-task=10
+#SBATCH --cpus-per-task=5
 #SBATCH --time=10:00:00
 #SBATCH --gres=gpu:a100:2
 #SBATCH --mem=40G

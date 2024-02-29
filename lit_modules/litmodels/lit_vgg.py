@@ -126,13 +126,13 @@ class LitVGG(L.LightningModule):
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(
-            self.parameters(), lr=self.hparams.learning_rate, weight_decay=1e-4
+            self.parameters(), lr=self.hparams.learning_rate, weight_decay=5e-4
         )
         # Assuming a decay factor of gamma (e.g., 0.1) every 150 epochs
 
         scheduler = torch.optim.lr_scheduler.StepLR(
             optimizer,
-            step_size=150,
+            step_size=56,
             gamma=0.1,
         )
         return {"optimizer": optimizer, "lr_scheduler": scheduler}
