@@ -1,4 +1,11 @@
+import sys
 import os
+
+# Add the parent directory to the Python path
+script_dir = os.path.dirname(__file__)  # Get the directory where the script is located
+parent_dir = os.path.dirname(script_dir)  # Get the parent directory
+sys.path.append(parent_dir)
+
 import numpy as np
 import PIL.Image
 import torch
