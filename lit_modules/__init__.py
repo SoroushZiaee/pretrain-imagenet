@@ -8,3 +8,6 @@ from .litmodels.lit_memnet import LitMemNet
 from .litmodels.lit_googlenet import LitGoogleNet
 from .litmodels.lit_convnet import LitConvNet
 from .litmodels.lit_inception import LitInception
+from .litmodels.lit_mobilenet_v2 import LitMobileNetV2
+from .litmodels.lit_resnet101 import LitResNet101
+from .litmodels.lit_vgg_19 import LitVGG19

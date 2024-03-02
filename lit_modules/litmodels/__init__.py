@@ -5,3 +5,6 @@ from .lit_memnet import LitMemNet
 from .lit_googlenet import LitGoogleNet
 from .lit_convnet import LitConvNet
 from .lit_inception import LitInception
+from .lit_mobilenet_v2 import LitMobileNetV2
+from .lit_resnet101 import LitResNet101
+from .lit_vgg_19 import LitVGG19
