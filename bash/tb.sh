@@ -10,4 +10,4 @@ fi
 
 # Start TensorBoard
 echo "Starting TensorBoard with log directory: $LOG_DIR"
-tensorboard --logdir="$LOG_DIR" --bind_all --port=8181
+tensorboard --logdir="$LOG_DIR" --bind_all --port=8181 --load_fast=true
