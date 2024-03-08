@@ -1,20 +1,24 @@
 import torch
 import torch.nn as nn
+from torchmetrics import Accuracy
 from torchvision.models import googlenet
 import lightning as L
 import torch.optim as optim
 
 
 class GoogleNetRegression(nn.Module):
-    def __init__(self, num_output_features=1):
+    def __init__(self, num_output_features=1, task: str = "regression"):
         super().__init__()
         # Load a pre-trained ResNet-50 model
+        self.task = task
         self.googlenet_model = googlenet(weights=None, init_weights=True)
         # Replace the classifier layer for regression
-        num_ftrs = self.googlenet_model.fc.in_features
-        self.googlenet_model.fc = nn.Linear(num_ftrs, num_output_features)
-        # If your targets are in the range [0, 1], you might want to add a sigmoid layer:
-        self.sigmoid = nn.Sigmoid()
+
+        if task == "regression":
+            num_ftrs = self.googlenet_model.fc.in_features
+            self.googlenet_model.fc = nn.Linear(num_ftrs, num_output_features)
+            # If your targets are in the range [0, 1], you might want to add a sigmoid layer:
+            self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
         # Get the main output from the GoogLeNet model
@@ -25,20 +29,36 @@ class GoogleNetRegression(nn.Module):
             x = outputs.logits
 
         # Apply the sigmoid function to the main output
-        x = self.sigmoid(x)
+        if self.task == "regression":
+            x = self.sigmoid(x)
         return x
 
 
 class LitGoogleNet(L.LightningModule):
-    def __init__(self, learning_rate=1e-3, example_input_array=(64, 3, 224, 224)):
+    def __init__(
+        self,
+        learning_rate=1e-3,
+        num_output_features: int = 1,
+        example_input_array=(64, 3, 224, 224),
+        task: str = "regression",
+    ):
         super().__init__()
-        self.model = GoogleNetRegression(num_output_features=1)
+        self.model = GoogleNetRegression(
+            num_output_features=num_output_features, task=task
+        )
         self.learning_rate = learning_rate
+        self.task = task
         self.save_hyperparameters("learning_rate")
 
         self.example_input_array = torch.rand(size=example_input_array)
 
-        self.criterion = nn.MSELoss()
+        if task == "regression":
+            self.criterion = nn.MSELoss()
+
+        else:
+            self.criterion = nn.CrossEntropyLoss()
+            self.top1 = Accuracy(task="multiclass", num_classes=1000, top_k=1)
+            self.top5 = Accuracy(task="multiclass", num_classes=1000, top_k=5)
 
     def forward(self, x):
         return self.model(x)
@@ -50,6 +70,25 @@ class LitGoogleNet(L.LightningModule):
         loss = self.criterion(output.squeeze(), y)
         self.log("training_loss", loss, prog_bar=True, on_step=True, on_epoch=True)
 
+        if self.task == "classification":
+            top1_err = 1 - self.top1(output.squeeze(), y)
+            top5_err = 1 - self.top5(output.squeeze(), y)
+
+            self.log(
+                "training_top1_err",
+                top1_err,
+                prog_bar=True,
+                on_step=True,
+                on_epoch=True,
+            )
+            self.log(
+                "training_top5_err",
+                top5_err,
+                prog_bar=True,
+                on_step=True,
+                on_epoch=True,
+            )
+
         return loss
 
     def validation_step(self, batch, batch_idx):
@@ -58,6 +97,25 @@ class LitGoogleNet(L.LightningModule):
 
         loss = self.criterion(output.squeeze(), y)
         self.log("val_loss", loss, prog_bar=True, on_step=False, on_epoch=True)
+
+        if self.task == "classification":
+            top1_err = 1 - self.top1(output.squeeze(), y)
+            top5_err = 1 - self.top5(output.squeeze(), y)
+
+            self.log(
+                "validation_top1_err",
+                top1_err,
+                prog_bar=True,
+                on_step=False,
+                on_epoch=True,
+            )
+            self.log(
+                "validation_top5_err",
+                top5_err,
+                prog_bar=True,
+                on_step=False,
+                on_epoch=True,
+            )
 
     def test_step(self, batch, batch_idx):
         x, y = batch
@@ -68,13 +126,15 @@ class LitGoogleNet(L.LightningModule):
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(
-            self.parameters(), lr=self.hparams.learning_rate, weight_decay=1e-3
+            self.parameters(),
+            lr=self.hparams.learning_rate,
+            weight_decay=1e-4,
         )
         # Assuming a decay factor of gamma (e.g., 0.1) every 150 epochs
 
         scheduler = torch.optim.lr_scheduler.StepLR(
             optimizer,
-            step_size=17,
+            step_size=30,
             gamma=0.1,
         )
         return {"optimizer": optimizer, "lr_scheduler": scheduler}

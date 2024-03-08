@@ -17,8 +17,11 @@ import torch.nn as nn
 
 
 class AlexNet(nn.Module):
-    def __init__(self, num_classes=1000):  # Default is for ImageNet
+    def __init__(
+        self, num_output_features: int = 1000, task: str = "regression"
+    ):  # Default is for ImageNet
         super().__init__()
+        self.task = task
         self.features = nn.Sequential(
             nn.Conv2d(3, 64, kernel_size=11, stride=4, padding=2),
             nn.ReLU(inplace=True),
@@ -42,7 +45,7 @@ class AlexNet(nn.Module):
             nn.Dropout(p=0.5),
             nn.Linear(4096, 4096),
             nn.ReLU(inplace=True),
-            nn.Linear(4096, num_classes),
+            nn.Linear(4096, num_output_features),
         )
         self._initialize_weights()
 
@@ -73,17 +76,19 @@ class LitAlexNet(L.LightningModule):
     def __init__(
         self,
         learning_rate,
-        num_classes: int = 1000,
+        num_output_features: int = 1,
         example_input_array: Tuple[int] = (64, 3, 224, 224),
+        task: str = "regression",
     ):
         super().__init__()
         self.save_hyperparameters("learning_rate")
-        self.save_hyperparameters("num_classes")
+        self.save_hyperparameters("num_output_features")
 
         self.example_input_array = torch.rand(size=example_input_array)
 
         # Load the pretrained AlexNet model
-        self.alex_net = AlexNet(num_classes=self.hparams.num_classes)
+        self.alex_net = AlexNet(num_output_features=num_output_features, task=task)
+        self.task = task
 
         # self.alex_net = torch.hub.load(
         #     "pytorch/vision:v0.10.0", "alexnet", weights=None
@@ -92,13 +97,13 @@ class LitAlexNet(L.LightningModule):
         print(f"everything is loaded.")
 
         # Define criterion (loss function) and metrics
-        self.criterion = nn.CrossEntropyLoss()
-        self.accuracy_top_1 = Accuracy(
-            task="multiclass", num_classes=self.hparams.num_classes, top_k=1
-        )
-        self.accuracy_top_5 = Accuracy(
-            task="multiclass", num_classes=self.hparams.num_classes, top_k=5
-        )
+        if task == "regression":
+            self.criterion = nn.MSELoss()
+
+        else:
+            self.criterion = nn.CrossEntropyLoss()
+            self.top1 = Accuracy(task="multiclass", num_classes=1000, top_k=1)
+            self.top5 = Accuracy(task="multiclass", num_classes=1000, top_k=5)
 
     def forward(self, x):
         return self.alex_net(x)
@@ -108,81 +113,56 @@ class LitAlexNet(L.LightningModule):
         # assert y.min() >= 0 and y.max() < 10, "Label indices should be within [0, 9]."
         output = self.alex_net(x)
         loss = self.criterion(output, y)
+        self.log("training_loss", loss, prog_bar=True, on_step=True, on_epoch=True)
         # Calculate Top-1 accuracy
-        top1_acc = self.accuracy_top_1(output, y)
-        # Calculate Top-1 error
-        top1_error = 1 - top1_acc
 
-        top5_acc = self.accuracy_top_5(output, y)
+        if self.task == "classification":
+            top1_err = 1 - self.top1(output.squeeze(), y)
+            top5_err = 1 - self.top5(output.squeeze(), y)
 
-        top5_error = 1 - top5_acc
+            self.log(
+                "training_top1_err",
+                top1_err,
+                prog_bar=True,
+                on_step=True,
+                on_epoch=True,
+            )
+            self.log(
+                "training_top5_err",
+                top5_err,
+                prog_bar=True,
+                on_step=True,
+                on_epoch=True,
+            )
 
-        # Log Top-1 error to TensorBoard
-        self.log(
-            "train_top1_error",
-            top1_error,
-            on_step=False,
-            on_epoch=True,
-            prog_bar=True,
-            logger=True,
-        )
-
-        # Log Top-1 error to TensorBoard
-        self.log(
-            "train_top5_error",
-            top5_error,
-            on_step=False,
-            on_epoch=True,
-            prog_bar=True,
-            logger=True,
-        )
-        self.log("train_loss", loss, prog_bar=True, on_step=True, on_epoch=True)
-
-        lr = self.trainer.optimizers[0].param_groups[0]["lr"]
-        self.log(
-            "Learning Rate",
-            lr,
-            prog_bar=True,
-            on_step=False,
-            on_epoch=True,
-        )
         return loss
 
     def validation_step(self, batch, batch_idx):
         x, y = batch
         output = self.alex_net(x)
         loss = self.criterion(output, y)
-        # Calculate Top-1 accuracy
-        top1_acc = self.accuracy_top_1(output, y)
-        # Calculate Top-1 error
-        top1_error = 1 - top1_acc
-
-        top5_acc = self.accuracy_top_5(output, y)
-
-        top5_error = 1 - top5_acc
-
-        # Log Top-1 error to TensorBoard
-        self.log(
-            "val_top1_error",
-            top1_error,
-            on_step=False,
-            on_epoch=True,
-            prog_bar=True,
-            logger=True,
-        )
-
-        # Log Top-1 error to TensorBoard
-        self.log(
-            "val_top5_error",
-            top5_error,
-            on_step=False,
-            on_epoch=True,
-            prog_bar=True,
-            logger=True,
-        )
         self.log(
             "val_loss", loss, on_epoch=True, prog_bar=True, logger=True, on_step=False
         )
+
+        if self.task == "classification":
+            top1_err = 1 - self.top1(output.squeeze(), y)
+            top5_err = 1 - self.top5(output.squeeze(), y)
+
+            self.log(
+                "validation_top1_err",
+                top1_err,
+                prog_bar=True,
+                on_step=False,
+                on_epoch=True,
+            )
+            self.log(
+                "validation_top5_err",
+                top5_err,
+                prog_bar=True,
+                on_step=False,
+                on_epoch=True,
+            )
 
     def configure_optimizers(self):
         # Define your optimizer
@@ -190,7 +170,18 @@ class LitAlexNet(L.LightningModule):
             self.parameters(), lr=self.hparams.learning_rate, weight_decay=1e-4
         )
 
-        return optimizer
+        # Assuming a decay factor of gamma (e.g., 0.1) every 150 epochs
+
+        for param_group in optimizer.param_groups:
+            param_group["initial_lr"] = self.hparams.learning_rate
+
+        scheduler = torch.optim.lr_scheduler.StepLR(
+            optimizer,
+            step_size=10,
+            gamma=0.1,
+            last_epoch=39,
+        )
+        return {"optimizer": optimizer, "lr_scheduler": scheduler}
 
     def on_epoch_end(self):
         # Log the learning rate

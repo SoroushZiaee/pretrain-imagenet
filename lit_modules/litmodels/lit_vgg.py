@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+from torchmetrics import Accuracy
 
 import lightning as L
 
@@ -76,28 +77,53 @@ class VGG(nn.Module):
 
 
 class VGGRegression(VGG):
-    def __init__(self, output_dim=1):
-        super().__init__(num_classes=output_dim, init_weights=True)
-        # Replace the last layer for regression
-        self.classifier[-1] = nn.Linear(4096, output_dim)
-        # If your targets are in the range [0, 1], you might want to add a sigmoid layer:
-        self.sigmoid = nn.Sigmoid()
+    def __init__(self, num_output_features=1, task: str = "regression"):
+        super().__init__(
+            num_classes=num_output_features,
+            init_weights=True,
+        )
+        self.task = task
+
+        if task == "regression":
+            # Replace the last layer for regression
+            self.classifier[-1] = nn.Linear(4096, num_output_features)
+            # If your targets are in the range [0, 1], you might want to add a sigmoid layer:
+            self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
         x = super().forward(x)
-        x = self.sigmoid(x)
+
+        if self.task == "regression":
+            x = self.sigmoid(x)
+
         return x
 
 
 class LitVGG(L.LightningModule):
-    def __init__(self, learning_rate: float = 0.01):
+    def __init__(
+        self,
+        learning_rate: float = 0.01,
+        num_output_features: int = 1,
+        task: str = "regression",
+    ):
         super().__init__()
+        self.learning_rate = learning_rate
+        self.task = task
         self.save_hyperparameters("learning_rate")
         self.example_input_array = torch.randn(8, 3, 256, 256)
 
-        self.vgg = VGGRegression(output_dim=1)
+        self.vgg = VGGRegression(
+            num_output_features=num_output_features,
+            task=task,
+        )
 
-        self.criterion = nn.MSELoss()
+        if task == "regression":
+            self.criterion = nn.MSELoss()
+
+        else:
+            self.criterion = nn.CrossEntropyLoss()
+            self.top1 = Accuracy(task="multiclass", num_classes=1000, top_k=1)
+            self.top5 = Accuracy(task="multiclass", num_classes=1000, top_k=5)
 
     def forward(self, x):
         return self.vgg(x)
@@ -109,6 +135,25 @@ class LitVGG(L.LightningModule):
         loss = self.criterion(output.squeeze(), y)
         self.log("training_loss", loss, prog_bar=True, on_step=True, on_epoch=True)
 
+        if self.task == "classification":
+            top1_err = 1 - self.top1(output.squeeze(), y)
+            top5_err = 1 - self.top5(output.squeeze(), y)
+
+            self.log(
+                "training_top1_err",
+                top1_err,
+                prog_bar=True,
+                on_step=True,
+                on_epoch=True,
+            )
+            self.log(
+                "training_top5_err",
+                top5_err,
+                prog_bar=True,
+                on_step=True,
+                on_epoch=True,
+            )
+
         return loss
 
     def validation_step(self, batch, batch_idx):
@@ -117,6 +162,25 @@ class LitVGG(L.LightningModule):
 
         loss = self.criterion(output.squeeze(), y)
         self.log("val_loss", loss, prog_bar=True, on_step=False, on_epoch=True)
+
+        if self.task == "classification":
+            top1_err = 1 - self.top1(output.squeeze(), y)
+            top5_err = 1 - self.top5(output.squeeze(), y)
+
+            self.log(
+                "validation_top1_err",
+                top1_err,
+                prog_bar=True,
+                on_step=False,
+                on_epoch=True,
+            )
+            self.log(
+                "validation_top5_err",
+                top5_err,
+                prog_bar=True,
+                on_step=False,
+                on_epoch=True,
+            )
 
     def test_step(self, batch, batch_idx):
         x, y = batch

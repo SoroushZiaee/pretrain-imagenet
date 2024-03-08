@@ -6,7 +6,7 @@ from torch.utils.data import DataLoader
 import torch
 
 
-class TinyImageNetDataModule(L.LightningDataModule):
+class TinyImageNetTinyDataModule(L.LightningDataModule):
     def __init__(self, data_path, batch_size=32) -> None:
         super().__init__()
         self.save_hyperparameters("batch_size")
