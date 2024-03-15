@@ -4,7 +4,7 @@
 #SBATCH --error=vgg16_imgnet.err
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=8
-#SBATCH --time=1:00:00
+#SBATCH --time=144:00:00
 #SBATCH --gres=gpu:v100:1
 #SBATCH --mem=20G
 #SBATCH --mail-type=R,END,FAIL # Send email on job END and FAIL

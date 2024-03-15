@@ -159,6 +159,7 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 notebook/lightning_logs/
+notebook/runs/
 notebook/log/
 notebook/MNIST/
 lightning_logs/
@@ -179,3 +180,4 @@ data/
 *.pt
 *.ckpt
 *.csv
+*.npy

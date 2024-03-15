@@ -33,7 +33,7 @@ def main():
     )
     num_output_features = 1000
     model = LitVGG(
-        learning_rate=1e-2,
+        learning_rate=1e-3,
         num_output_features=num_output_features,
         task="classification",
     )
@@ -51,7 +51,7 @@ def main():
         accelerator="gpu",
         num_nodes=1,
         strategy=strategy,
-        overfit_batches=1,
+        # overfit_batches=1,
         # gradient_clip_val=0.5,
         # gradient_clip_algorithm="value",
         logger=tb_logger,

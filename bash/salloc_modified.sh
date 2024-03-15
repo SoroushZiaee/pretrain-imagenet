@@ -11,6 +11,6 @@
 salloc -N 1 \
        -n 5 \
        -c 1 \
-       --mem=5GB \
-       -t 05:00:00 \
-       --gres=gpu:t4:1 \
+       --mem=30GB \
+       -t 10:00:00 \
+       --gres=gpu:t4:4 \
